@@ -85,7 +85,7 @@ namespace BayesFilter.Portable
             // Auto train only when enabled and if the minimum amount of significant tokens have been found.
             RunAutoTrain(tokenProbDict, significantTokenDict.Count, badProb);
 
-            // Clean up
+            // Clean up.
             tokenProbDict = null;
             significantTokenDict = null;
 
@@ -167,47 +167,56 @@ namespace BayesFilter.Portable
             // Update key array.
             keys = GetKeys(tokenProbDict);
 
-            // Make a list of the most significant (bad) tokens.
-            if (keys.Length >= SignificantTokens)
+            // Return partial list if more than max number of significant (bad) tokens.
+            if (keys.Length > SignificantTokens)
             {
-                var arrSigToken = new string[SignificantTokens];
-                var arrSigProb = new double[SignificantTokens];
-
-                // Add first SignificantTokens tokens to temp array.
-                for (int i = 0; i < SignificantTokens; i++)
-                {
-                    arrSigToken[i] = keys[i]; // Token.
-                    arrSigProb[i] = tokenProbDict[keys[i]]; // Prob.
-                }
-
-                // Search for more significant tokens.
-                for (int i = SignificantTokens; i < keys.Length; i++)
-                {
-                    // Compare them one by one with the tokens already in the array.
-                    for (int x = 0; x < SignificantTokens; x++)
-                    {
-                        // Token has higher probability of being bad, use it instead.
-                        if (tokenProbDict[keys[i]] > arrSigProb[x])
-                        {
-                            arrSigToken[x] = keys[i];
-                            arrSigProb[x] = tokenProbDict[keys[i]];
-                            break;
-                        }
-                    }
-                }
-
-                // Make a dictionary.
-                for (int i = 0; i < SignificantTokens; i++)
-                {
-                    probDict.Add(arrSigToken[i], arrSigProb[i]);
-                }
+                probDict = GetMostSignificantTokens(tokenProbDict, keys);
             }
             else
             {
+                // Return full list if less than max number of significant (bad) tokens.
                 probDict = tokenProbDict;
             }
 
             // Return.
+            return probDict;
+        }
+
+        private Dictionary<string, double> GetMostSignificantTokens(Dictionary<string, double> tokenProbDict,  string[] keys)
+        {
+            var probDict = new Dictionary<string, double>();
+            var arrSigToken = new string[SignificantTokens];
+            var arrSigProb = new double[SignificantTokens];
+
+            // Add first SignificantTokens tokens to temp array.
+            for (int i = 0; i < SignificantTokens; i++)
+            {
+                arrSigToken[i] = keys[i]; // Token.
+                arrSigProb[i] = tokenProbDict[keys[i]]; // Prob.
+            }
+
+            // Search for more significant tokens.
+            for (int i = SignificantTokens; i < keys.Length; i++)
+            {
+                // Compare them one by one with the tokens already in the array.
+                for (int x = 0; x < SignificantTokens; x++)
+                {
+                    // Token has higher probability of being bad, use it instead.
+                    if (tokenProbDict[keys[i]] > arrSigProb[x])
+                    {
+                        arrSigToken[x] = keys[i];
+                        arrSigProb[x] = tokenProbDict[keys[i]];
+                        break;
+                    }
+                }
+            }
+
+            // Make a dictionary.
+            for (int i = 0; i < SignificantTokens; i++)
+            {
+                probDict.Add(arrSigToken[i], arrSigProb[i]);
+            }
+
             return probDict;
         }
 

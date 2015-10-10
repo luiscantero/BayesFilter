@@ -32,6 +32,12 @@ namespace BayesFilter
                 //test = "a b c d e f g h i j p q r s t"; // 15
                 Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
 
+                test = "a b c d e f g h i j k l m n o p q";
+                bayes.AutoTrain = true; // Only happens if result passes threshold test.
+                Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
+                Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
+                Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
+
                 // Perf test.
                 //RunPerfTest(bayes, test);
 

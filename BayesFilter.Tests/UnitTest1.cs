@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using BayesFilter.Portable;
+using System.Diagnostics;
 
 namespace BayesFilter.Tests
 {
@@ -57,7 +58,10 @@ namespace BayesFilter.Tests
                 Assert.AreEqual(bayes.BadEventCount, 5);
                 Assert.AreEqual(bayes.TokenCount, 26);
 
-                string test = "a";
+                string test;
+                double val;
+
+                test = "a";
                 Assert.AreEqual(0, bayes.GetBadProbability(test));
 
                 test = "z";
@@ -67,12 +71,21 @@ namespace BayesFilter.Tests
                 Assert.AreEqual(0.5, bayes.GetBadProbability(test));
 
                 test = "a b z";
-                double val = bayes.GetBadProbability(test);
+                val = bayes.GetBadProbability(test);
                 Assert.IsTrue(val > 0.3 && val < 0.4); // 0.3...
 
                 test = "a y z";
                 val = bayes.GetBadProbability(test);
                 Assert.IsTrue(val > 0.6 && val < 0.7); // 0.6...
+
+                bayes.AutoTrain = true; // Only happens if result passes threshold test.
+                test = "a b c d e f g h i j k l m n o p q";
+                val = bayes.GetBadProbability(test);
+                Assert.IsTrue(val > 0.06 && val < 0.07); // 0.06...
+                val = bayes.GetBadProbability(test);
+                Assert.IsTrue(val > 0.05 && val < 0.06); // 0.05...
+                val = bayes.GetBadProbability(test);
+                Assert.IsTrue(val > 0.04 && val < 0.05); // 0.04...
             }
         }
     }
