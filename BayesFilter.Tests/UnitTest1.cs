@@ -78,11 +78,11 @@ namespace BayesFilter.Tests
 
                 test = "a b z";
                 val = bayes.GetBadProbability(test);
-                Assert.IsTrue(val > 0.3 && val < 0.4); // 0.3...
+                Assert.AreEqual(1.0 / 3.0, val, double.Epsilon);
 
                 test = "a y z";
                 val = bayes.GetBadProbability(test);
-                Assert.IsTrue(val > 0.6 && val < 0.7); // 0.6...
+                Assert.AreEqual(2.0 / 3.0, val, double.Epsilon);
 
                 bayes.AutoTrain = true; // Only happens if result passes threshold test.
                 test = "a b c d e f g h i j k l m n o p q";

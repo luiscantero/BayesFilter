@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace BayesFilter.Portable
 {
@@ -71,16 +72,11 @@ namespace BayesFilter.Portable
         // Classifies text by calculating its probability of being bad.
         public double GetBadProbability(string text)
         {
-            double totalProb = 0;
-
             Dictionary<string, double> tokenProbDict = GetTokenProbDict(text);
             Dictionary<string, double> significantTokenDict = GetMostSignificantTokens(tokenProbDict);
 
             // Add all probabilities
-            foreach (var key in significantTokenDict.Keys)
-            {
-                totalProb += significantTokenDict[key];
-            }
+            double totalProb = significantTokenDict.Values.Sum();
 
             double badProb = significantTokenDict.Count > 0 ?
                 totalProb / significantTokenDict.Count : // Total prob / number of tokens.
@@ -147,77 +143,31 @@ namespace BayesFilter.Portable
         // Returns most significant tokens, measured by their probability of being bad.
         private Dictionary<string, double> GetMostSignificantTokens(Dictionary<string, double> tokenProbDict)
         {
-            RemoveInsignificantTokens(tokenProbDict);
+            tokenProbDict = RemoveInsignificantTokens(tokenProbDict);
 
             // Return list with max number of significant (bad) tokens.
-            Dictionary<string, double> probDict = tokenProbDict.Count > SignificantTokens ?
-                GetMostSignificantTokenDict(tokenProbDict) : // Partial list.
-                tokenProbDict; // Full list.
-
-            // Return.
-            return probDict;
+            return GetTopSignificantTokens(tokenProbDict);
         }
 
-        private void RemoveInsignificantTokens(Dictionary<string, double> tokenProbDict)
+        private Dictionary<string, double> RemoveInsignificantTokens(Dictionary<string, double> tokenProbDict)
         {
-            string[] keys = GetKeys(tokenProbDict);
+            var query = from token in tokenProbDict
+                            // Remove unkown tokens.
+                        where _badTokenProb.ContainsKey(token.Key) &&
+                              // Remove tokens that do not meet the minimum occurrence requirement.
+                              _goodTokenOccurrence[token.Key] + _badTokenOccurrence[token.Key] >= MinTokenOccurrence
+                        select token;
 
-            // Consider only tokens that occured a minimum amount of times.
-            for (int i = 0; i < keys.Length; i++)
-            {
-                if (_badTokenProb.ContainsKey(keys[i]))
-                {
-                    // Token does not meet the minimum occurrence requirement, remove it.
-                    if (_goodTokenOccurrence[keys[i]] + _badTokenOccurrence[keys[i]] < MinTokenOccurrence)
-                    {
-                        tokenProbDict.Remove(keys[i]);
-                    }
-                }
-                else // Unkown token, remove it.
-                {
-                    tokenProbDict.Remove(keys[i]);
-                }
-            }
+            return query.ToDictionary(t => t.Key, t => t.Value);
         }
 
-        private Dictionary<string, double> GetMostSignificantTokenDict(Dictionary<string, double> tokenProbDict)
+        private Dictionary<string, double> GetTopSignificantTokens(Dictionary<string, double> tokenProbDict)
         {
-            var probDict = new Dictionary<string, double>(SignificantTokens, StringComparer.CurrentCultureIgnoreCase);
-            var arrSigToken = new string[SignificantTokens];
-            var arrSigProb = new double[SignificantTokens];
+            var query = from token in tokenProbDict
+                        orderby token.Value descending
+                        select token;
 
-            string[] keys = GetKeys(tokenProbDict);
-
-            // Add first half of token array.
-            for (int i = 0; i < SignificantTokens; i++)
-            {
-                arrSigToken[i] = keys[i]; // Token.
-                arrSigProb[i] = tokenProbDict[keys[i]]; // Prob.
-            }
-
-            // Search for more significant tokens in second half.
-            for (int i = SignificantTokens; i < keys.Length; i++)
-            {
-                // Replace token with less prob with a higher one.
-                for (int ii = 0; ii < SignificantTokens; ii++)
-                {
-                    // Token has higher probability of being bad, use it instead.
-                    if (tokenProbDict[keys[i]] > arrSigProb[ii])
-                    {
-                        arrSigToken[ii] = keys[i];
-                        arrSigProb[ii] = tokenProbDict[keys[i]];
-                        break;
-                    }
-                }
-            }
-
-            // Make a dictionary.
-            for (int i = 0; i < SignificantTokens; i++)
-            {
-                probDict.Add(arrSigToken[i], arrSigProb[i]);
-            }
-
-            return probDict;
+            return query.Take(SignificantTokens).ToDictionary(t => t.Key, t => t.Value);
         }
 
         // Prob of something good, taking into account the number of good and bad experiences.
@@ -225,13 +175,13 @@ namespace BayesFilter.Portable
         {
             return goodCount > 0 || badCount > 0 ?
                 goodCount / (double)(goodCount + badCount) : // Prob.
-                UnkownBadProb; // No data.
+                UnkownBadProb; // Unknown.
         }
 
         // Returns a dictionary containing all found tokens and their prob.
         private Dictionary<string, double> GetTokenProbDict(string text)
         {
-            var probDict = new Dictionary<string, double>(StringComparer.CurrentCultureIgnoreCase);
+            var probDict = new Dictionary<string, double>(); // Case insensitive compare not need.
 
             // Clean up text.
             text = CleanText(text);
@@ -331,6 +281,7 @@ namespace BayesFilter.Portable
                 {
                     correctionFactor = (probPA / probAN) / 2;
                 }
+
                 if (correctionFactor > 0)
                 {
                     probAN = probAN * correctionFactor;

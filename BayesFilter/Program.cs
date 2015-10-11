@@ -33,17 +33,13 @@ namespace BayesFilter
                 //test = "a b c d e f g h i j p q r s t"; // 15
                 Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
 
-                test = "a b c d e f g h i j k l m n o p q";
+                test = "a b c d e f g h i j k l m n o p q aa";
                 bayes.AutoTrain = true; // Only happens if result passes threshold test.
                 Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
                 Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
                 Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
 
-                Task t = bayes.SaveAsync();
-                t.Wait();
-
-                t = bayes.LoadAsync();
-                t.Wait();
+                //SaveLoadTest(bayes);
 
                 // Perf test.
                 //RunPerfTest(bayes, test);
@@ -53,9 +49,18 @@ namespace BayesFilter
             }
         }
 
+        private static void SaveLoadTest(BFEngine bayes)
+        {
+            Task t = bayes.SaveAsync();
+            t.Wait();
+
+            t = bayes.LoadAsync();
+            t.Wait();
+        }
+
         private static void RunPerfTest(BFEngine bayes, string test)
         {
-            int length = 100000;
+            int length = 10000;
 
             var watch = Stopwatch.StartNew();
             for (int i = 0; i < length; i++)
