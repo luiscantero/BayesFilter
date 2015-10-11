@@ -1,19 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace BayesFilter.Portable
 {
     public class BFEngine : IDisposable
     {
+        private IPlatformServices _platformServices;
+
         // Dictionaries (hash tables).
-        private Dictionary<string, int> goodTokenOccurrence = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
-        private Dictionary<string, int> badTokenOccurrence = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
-        private Dictionary<string, double> badTokenProb = new Dictionary<string, double>(StringComparer.CurrentCultureIgnoreCase);
+        private Dictionary<string, int> _goodTokenOccurrence = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
+        private Dictionary<string, int> _badTokenOccurrence = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
+        private Dictionary<string, double> _badTokenProb = new Dictionary<string, double>(StringComparer.CurrentCultureIgnoreCase);
 
         private enum TrainType
         {
             Good,
-            Bad
+            Bad,
         }
 
         // Good event count.
@@ -25,12 +28,9 @@ namespace BayesFilter.Portable
         {
             get
             {
-                return badTokenProb.Count;
+                return _badTokenProb.Count;
             }
         }
-
-        // Database connection object.
-        //public object ConnectionObject { get; set; }
 
         // Auto train when classifying based on good and bad thresholds.
         public bool AutoTrain { get; set; } = false;
@@ -49,18 +49,23 @@ namespace BayesFilter.Portable
         // Prob for unkown token.
         public double UnkownBadProb { get; set; } = 0.5;
 
+        public BFEngine(IPlatformServices platformServices)
+        {
+            _platformServices = platformServices;
+        }
+
         public void Dispose()
         {
             GC.SuppressFinalize(this);
 
             // Clean up.
             //ConnectionObject = null;
-            goodTokenOccurrence.Clear();
-            goodTokenOccurrence = null;
-            badTokenOccurrence.Clear();
-            badTokenOccurrence = null;
-            badTokenProb.Clear();
-            badTokenProb = null;
+            _goodTokenOccurrence.Clear();
+            _goodTokenOccurrence = null;
+            _badTokenOccurrence.Clear();
+            _badTokenOccurrence = null;
+            _badTokenProb.Clear();
+            _badTokenProb = null;
         }
 
         // Classifies text by calculating its probability of being bad.
@@ -71,16 +76,15 @@ namespace BayesFilter.Portable
             Dictionary<string, double> tokenProbDict = GetTokenProbDict(text);
             Dictionary<string, double> significantTokenDict = GetMostSignificantTokens(tokenProbDict);
 
-            string[] keys = GetKeys(significantTokenDict);
-
             // Add all probabilities
-            for (int i = 0; i < keys.Length; i++)
+            foreach (var key in significantTokenDict.Keys)
             {
-                totalProb += significantTokenDict[keys[i]];
+                totalProb += significantTokenDict[key];
             }
 
-            // Calc return value.
-            double badProb = keys.Length > 0 ? totalProb / keys.Length : UnkownBadProb;
+            double badProb = significantTokenDict.Count > 0 ?
+                totalProb / significantTokenDict.Count : // Total prob / number of tokens.
+                UnkownBadProb; // Unknown.
 
             // Auto train only when enabled and if the minimum amount of significant tokens have been found.
             RunAutoTrain(tokenProbDict, significantTokenDict.Count, badProb);
@@ -143,17 +147,28 @@ namespace BayesFilter.Portable
         // Returns most significant tokens, measured by their probability of being bad.
         private Dictionary<string, double> GetMostSignificantTokens(Dictionary<string, double> tokenProbDict)
         {
-            var probDict = new Dictionary<string, double>();
+            RemoveInsignificantTokens(tokenProbDict);
 
+            // Return list with max number of significant (bad) tokens.
+            Dictionary<string, double> probDict = tokenProbDict.Count > SignificantTokens ?
+                GetMostSignificantTokenDict(tokenProbDict) : // Partial list.
+                tokenProbDict; // Full list.
+
+            // Return.
+            return probDict;
+        }
+
+        private void RemoveInsignificantTokens(Dictionary<string, double> tokenProbDict)
+        {
             string[] keys = GetKeys(tokenProbDict);
 
             // Consider only tokens that occured a minimum amount of times.
             for (int i = 0; i < keys.Length; i++)
             {
-                if (badTokenProb.ContainsKey(keys[i]))
+                if (_badTokenProb.ContainsKey(keys[i]))
                 {
                     // Token does not meet the minimum occurrence requirement, remove it.
-                    if (goodTokenOccurrence[keys[i]] + badTokenOccurrence[keys[i]] < MinTokenOccurrence)
+                    if (_goodTokenOccurrence[keys[i]] + _badTokenOccurrence[keys[i]] < MinTokenOccurrence)
                     {
                         tokenProbDict.Remove(keys[i]);
                     }
@@ -163,49 +178,34 @@ namespace BayesFilter.Portable
                     tokenProbDict.Remove(keys[i]);
                 }
             }
-
-            // Update key array.
-            keys = GetKeys(tokenProbDict);
-
-            // Return partial list if more than max number of significant (bad) tokens.
-            if (keys.Length > SignificantTokens)
-            {
-                probDict = GetMostSignificantTokens(tokenProbDict, keys);
-            }
-            else
-            {
-                // Return full list if less than max number of significant (bad) tokens.
-                probDict = tokenProbDict;
-            }
-
-            // Return.
-            return probDict;
         }
 
-        private Dictionary<string, double> GetMostSignificantTokens(Dictionary<string, double> tokenProbDict,  string[] keys)
+        private Dictionary<string, double> GetMostSignificantTokenDict(Dictionary<string, double> tokenProbDict)
         {
-            var probDict = new Dictionary<string, double>();
+            var probDict = new Dictionary<string, double>(SignificantTokens, StringComparer.CurrentCultureIgnoreCase);
             var arrSigToken = new string[SignificantTokens];
             var arrSigProb = new double[SignificantTokens];
 
-            // Add first SignificantTokens tokens to temp array.
+            string[] keys = GetKeys(tokenProbDict);
+
+            // Add first half of token array.
             for (int i = 0; i < SignificantTokens; i++)
             {
                 arrSigToken[i] = keys[i]; // Token.
                 arrSigProb[i] = tokenProbDict[keys[i]]; // Prob.
             }
 
-            // Search for more significant tokens.
+            // Search for more significant tokens in second half.
             for (int i = SignificantTokens; i < keys.Length; i++)
             {
-                // Compare them one by one with the tokens already in the array.
-                for (int x = 0; x < SignificantTokens; x++)
+                // Replace token with less prob with a higher one.
+                for (int ii = 0; ii < SignificantTokens; ii++)
                 {
                     // Token has higher probability of being bad, use it instead.
-                    if (tokenProbDict[keys[i]] > arrSigProb[x])
+                    if (tokenProbDict[keys[i]] > arrSigProb[ii])
                     {
-                        arrSigToken[x] = keys[i];
-                        arrSigProb[x] = tokenProbDict[keys[i]];
+                        arrSigToken[ii] = keys[i];
+                        arrSigProb[ii] = tokenProbDict[keys[i]];
                         break;
                     }
                 }
@@ -223,8 +223,9 @@ namespace BayesFilter.Portable
         // Prob of something good, taking into account the number of good and bad experiences.
         private double GetProbGood(int goodCount, int badCount)
         {
-            // Return prob or no data.
-            return goodCount > 0 || badCount > 0 ? goodCount / (double)(goodCount + badCount) : UnkownBadProb;
+            return goodCount > 0 || badCount > 0 ?
+                goodCount / (double)(goodCount + badCount) : // Prob.
+                UnkownBadProb; // No data.
         }
 
         // Returns a dictionary containing all found tokens and their prob.
@@ -233,13 +234,7 @@ namespace BayesFilter.Portable
             var probDict = new Dictionary<string, double>(StringComparer.CurrentCultureIgnoreCase);
 
             // Clean up text.
-            text = text.Replace(Environment.NewLine, " ");
-
-            // Remove invisible chars.
-            for (int i = 0; i < 31; i++)
-            {
-                text = text.Replace(((char)i).ToString(), "");
-            }
+            text = CleanText(text);
 
             int begin = 0;
 
@@ -248,25 +243,18 @@ namespace BayesFilter.Portable
                 if (TokenCharset.IndexOf(text.Substring(i, 1)) == -1 || i == text.Length - 1) // Separator found.
                 {
                     int pad = i == text.Length - 1 ? 1 : 0;
-                    string strTemp = text.Substring(begin, i - begin + pad);
+                    string token = text.Substring(begin, i - begin + pad);
 
                     // Add token and its probability.
-                    if (!string.IsNullOrEmpty(strTemp))
+                    if (!string.IsNullOrEmpty(token))
                     {
-                        if (!probDict.ContainsKey(strTemp)) // Token not yet in list.
+                        if (!probDict.ContainsKey(token)) // Token not yet in list.
                         {
-                            double prob;
+                            double prob = _badTokenProb.ContainsKey(token) ?
+                                _badTokenProb[token] : // Prob.
+                                UnkownBadProb; // Unknown.
 
-                            if (badTokenProb.ContainsKey(strTemp)) // Known token.
-                            {
-                                prob = badTokenProb[strTemp];
-                            }
-                            else // Unknown token.
-                            {
-                                prob = UnkownBadProb;
-                            }
-
-                            probDict.Add(strTemp, prob); // Add with prob.
+                            probDict.Add(token, prob); // Add with prob.
                         }
                     }
 
@@ -277,40 +265,49 @@ namespace BayesFilter.Portable
             return probDict;
         }
 
+        private static string CleanText(string text)
+        {
+            text = text.Replace(Environment.NewLine, " ");
+
+            // Remove invisible chars.
+            for (int i = 0; i < 31; i++)
+            {
+                text = text.Replace(((char)i).ToString(), "");
+            }
+
+            return text;
+        }
+
         private void TrainDict(Dictionary<string, double> dicTable, TrainType trainType)
         {
             Dictionary<string, int> trainDict, oppositeDict;
 
-            switch (trainType)
+            if (trainType == TrainType.Good) // Good.
             {
-                case TrainType.Good: // Good.
-                    trainDict = goodTokenOccurrence;
-                    oppositeDict = badTokenOccurrence;
-                    GoodEventCount++;
-                    break;
-
-                default: // Bad.
-                    trainDict = badTokenOccurrence;
-                    oppositeDict = goodTokenOccurrence;
-                    BadEventCount++;
-                    break;
+                trainDict = _goodTokenOccurrence;
+                oppositeDict = _badTokenOccurrence;
+                GoodEventCount++;
+            }
+            else // Bad.
+            {
+                trainDict = _badTokenOccurrence;
+                oppositeDict = _goodTokenOccurrence;
+                BadEventCount++;
             }
 
-            string[] arrKeys = GetKeys(dicTable);
-
             // Get all tokens and their prob and put them in the dictionary.
-            for (int i = 0; i < arrKeys.Length; i++)
+            foreach (var key in dicTable.Keys)
             {
-                if (badTokenProb.ContainsKey(arrKeys[i])) // Token exists.
+                if (_badTokenProb.ContainsKey(key)) // Token exists.
                 {
                     // Increase count by one regardless of number of ocurrences in text.
-                    trainDict[arrKeys[i]]++;
+                    trainDict[key]++;
                 }
                 else // Add new token.
                 {
-                    trainDict.Add(arrKeys[i], 1);
-                    oppositeDict.Add(arrKeys[i], 0);
-                    badTokenProb.Add(arrKeys[i], 0);
+                    trainDict.Add(key, 1);
+                    oppositeDict.Add(key, 0);
+                    _badTokenProb.Add(key, 0);
                 }
             }
 
@@ -323,8 +320,6 @@ namespace BayesFilter.Portable
         {
             double probBAN, probBA, probAN, probPA;
             double correctionFactor = 0;
-
-            string[] keys = GetKeys(badTokenProb);
 
             probAN = GetProbGood(GoodEventCount, BadEventCount);
             probPA = 1 - probAN; // Prob bad.
@@ -342,94 +337,31 @@ namespace BayesFilter.Portable
                 }
             }
 
+            string[] keys = GetKeys(_badTokenProb);
+
             for (int i = 0; i < keys.Length; i++)
             {
                 // Prob that a token is good.
-                probBAN = GetProbGood(goodTokenOccurrence[keys[i]], badTokenOccurrence[keys[i]]);
+                probBAN = GetProbGood(_goodTokenOccurrence[keys[i]], _badTokenOccurrence[keys[i]]);
 
                 // Prob that a token is bad.
                 probBA = 1 - probBAN;
 
-                badTokenProb[keys[i]] = CalcBayes(probBA, probPA, probBAN, probAN);
+                _badTokenProb[keys[i]] = CalcBayes(probBA, probPA, probBAN, probAN);
             }
         }
+        public async Task SaveAsync()
+        {
+            await _platformServices.SaveDictAsync("GoodTokenOccurrence", _goodTokenOccurrence);
+            await _platformServices.SaveDictAsync("BadTokenOccurrence", _badTokenOccurrence);
+            await _platformServices.SaveDictAsync("BadTokenProb", _badTokenProb);
+        }
 
-        //// Load all tokens from a DB.
-        //public void DBLoad()
-        //{
-        //    object objRecordSet;
-        //    string sql;
-
-        //    // Load tokens, counts and probabilities from a DB.
-        //    sql = "SELECT * FROM tbl_Tokens";
-        //    objRecordSet = ConnectionObject.Execute(sql);
-
-        //    while (!objRecordSet.EOF)
-        //    {
-        //        goodTokenOccurrence.Add((string)objRecordSet("tok_Name"), (int)objRecordSet("tok_CountGood"));
-        //        badTokenOccurrence.Add((string)objRecordSet("tok_Name"), (int)objRecordSet("tok_CountBad"));
-        //        badTokenProb.Add((string)objRecordSet("tok_Name"), (double)objRecordSet("tok_BayProb"));
-
-        //        objRecordSet.MoveNext();
-        //    }
-
-        //    objRecordSet = null;
-
-        //    // Load counters.
-        //    sql = "SELECT * FROM tbl_Counter";
-        //    objRecordSet = ConnectionObject.Execute(sql);
-
-        //    if (!objRecordSet.EOF)
-        //    {
-        //        GoodEventCount = objRecordSet("cnt_Good");
-        //        BadEventCount = objRecordSet("cnt_Bad");
-        //    }
-
-        //    objRecordSet = null;
-        //} // DBLoad.
-
-        //// Save all tokens to a DB.
-        //public void DBSave()
-        //{
-        //    object objRecordSet;
-        //    string sql;
-
-        //    // Clear tables.
-        //    sql = "DELETE FROM tbl_Tokens";
-        //    ConnectionObject.Execute(sql);
-        //    sql = "DELETE FROM tbl_Counter";
-        //    ConnectionObject.Execute(sql);
-
-        //    objRecordSet = CreateObject("ADODB.Recordset");
-
-        //    objRecordSet.Open("tbl_Tokens", ConnectionObject, 0, 3); // adOpenForwardOnly, adLockOptimistic
-
-        //    string[] arrKeys = GetKeys(badTokenProb);
-
-        //    // Save tokens, counts and probabilities to a DB.
-        //    for (int i = 0; i < arrKeys.Length; i++)
-        //    {
-        //        objRecordSet.AddNew();
-        //        if (arrKeys[i].Length > MaxTokenLength)
-        //        {
-        //            arrKeys[i] = arrKeys[i].Substring(0, MaxTokenLength);
-        //        }
-
-        //        objRecordSet("tok_Name") = arrKeys[i];
-        //        objRecordSet("tok_CountGood") = goodTokenOccurrence[arrKeys[i]];
-        //        objRecordSet("tok_CountBad") = badTokenOccurrence[arrKeys[i]];
-        //        objRecordSet("tok_BayProb") = badTokenProb[arrKeys[i]];
-
-        //        objRecordSet.Update();
-        //    }
-
-        //    objRecordSet.Close();
-
-        //    objRecordSet = null;
-
-        //    // Save counters.
-        //    sql = "INSERT INTO tbl_Counter(cnt_Good, cnt_Bad) VALUES(" + GoodEventCount + ", " + BadEventCount + ")";
-        //    ConnectionObject.Execute(sql);
-        //} // DBSave.
+        public async Task LoadAsync()
+        {
+            _goodTokenOccurrence = await _platformServices.LoadDictAsync<Dictionary<string, int>>("GoodTokenOccurrence");
+            _badTokenOccurrence = await _platformServices.LoadDictAsync<Dictionary<string, int>>("BadTokenOccurrence");
+            _badTokenProb = await _platformServices.LoadDictAsync<Dictionary<string, double>>("BadTokenProb");
+        }
     }
 }

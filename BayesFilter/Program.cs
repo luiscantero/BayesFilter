@@ -1,6 +1,7 @@
 ﻿using BayesFilter.Portable;
 using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace BayesFilter
 {
@@ -8,7 +9,7 @@ namespace BayesFilter
     {
         static void Main(string[] args)
         {
-            using (var bayes = new BFEngine())
+            using (var bayes = new BFEngine(new ConsolePlatformServices()))
             {
                 // Train 5 times to reach MinTokenOccurrence.
                 bayes.TrainAsGood($"a b c d e f g h i j k l m n o p");
@@ -38,6 +39,12 @@ namespace BayesFilter
                 Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
                 Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
 
+                Task t = bayes.SaveAsync();
+                t.Wait();
+
+                t = bayes.LoadAsync();
+                t.Wait();
+
                 // Perf test.
                 //RunPerfTest(bayes, test);
 
@@ -48,7 +55,7 @@ namespace BayesFilter
 
         private static void RunPerfTest(BFEngine bayes, string test)
         {
-            int length = 10000;
+            int length = 100000;
 
             var watch = Stopwatch.StartNew();
             for (int i = 0; i < length; i++)

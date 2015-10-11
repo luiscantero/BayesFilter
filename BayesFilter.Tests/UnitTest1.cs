@@ -10,7 +10,7 @@ namespace BayesFilter.Tests
         [TestMethod]
         public void TestTrainGood()
         {
-            using (var bayes = new BFEngine())
+            using (var bayes = new BFEngine(new ConsolePlatformServices()))
             {
                 bayes.TrainAsGood($"a b c d e f g h i j k l m n o p");
                 bayes.TrainAsGood($"a b c d e f g h i j k l m n o p");
@@ -24,7 +24,7 @@ namespace BayesFilter.Tests
         [TestMethod]
         public void TestTrainBad()
         {
-            using (var bayes = new BFEngine())
+            using (var bayes = new BFEngine(new ConsolePlatformServices()))
             {
                 bayes.TrainAsBad("q r s t u v w x y z");
                 bayes.TrainAsBad("q r s t u v w x y z");
@@ -38,7 +38,7 @@ namespace BayesFilter.Tests
         [TestMethod]
         public void TestEvaluate()
         {
-            using (var bayes = new BFEngine())
+            using (var bayes = new BFEngine(new ConsolePlatformServices()))
             {
                 // Train 5 times to reach MinTokenOccurrence.
                 bayes.TrainAsGood($"a b c d e f g h i j k l m n o p");
@@ -64,10 +64,16 @@ namespace BayesFilter.Tests
                 test = "a";
                 Assert.AreEqual(0, bayes.GetBadProbability(test));
 
+                test = "A";
+                Assert.AreEqual(0, bayes.GetBadProbability(test));
+
                 test = "z";
                 Assert.AreEqual(1, bayes.GetBadProbability(test));
 
                 test = "a z";
+                Assert.AreEqual(0.5, bayes.GetBadProbability(test));
+
+                test = "A Z";
                 Assert.AreEqual(0.5, bayes.GetBadProbability(test));
 
                 test = "a b z";
