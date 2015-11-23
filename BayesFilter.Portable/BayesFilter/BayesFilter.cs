@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
 
-namespace BayesFilter.Portable
+namespace LC.BayesFilter
 {
     public class BFEngine : IDisposable
     {

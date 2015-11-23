@@ -1,6 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using BayesFilter.Portable;
-using System.Diagnostics;
+using LC.BayesFilter;
 
 namespace BayesFilter.Tests
 {
