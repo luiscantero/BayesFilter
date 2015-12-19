@@ -11,6 +11,17 @@ namespace BayesFilter
     {
         private string _extension = ".json";
 
+        public async Task<T> LoadDictAsync<T>(string name)
+        {
+            return await Task<T>.Run(() =>
+            {
+                string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), name + _extension);
+                string json = File.ReadAllText(path);
+
+                return JsonConvert.DeserializeObject<T>(json);
+            });
+        }
+
         public async Task SaveDictAsync<T>(string name, T dict)
         {
             await Task.Run(() =>
@@ -19,17 +30,6 @@ namespace BayesFilter
                 string json = JsonConvert.SerializeObject(dict);
 
                 File.WriteAllText(path, json);
-            });
-        }
-
-        public async Task<T> LoadDictAsync<T>(string name)
-        {
-            return await Task<Dictionary<string, T>>.Run(() =>
-            {
-                string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), name + _extension);
-                string json = File.ReadAllText(path);
-
-                return JsonConvert.DeserializeObject<T>(json);
             });
         }
     }
