@@ -9,7 +9,7 @@ namespace BayesFilter.Tests
         [TestMethod]
         public void TestTrainGood()
         {
-            using (var bayes = new BFEngine(new ConsolePlatformServices()))
+            using (var bayes = new BfEngine(new ConsolePlatformServices()))
             {
                 bayes.TrainAsGood($"a b c d e f g h i j k l m n o p");
                 bayes.TrainAsGood($"a b c d e f g h i j k l m n o p");
@@ -23,7 +23,7 @@ namespace BayesFilter.Tests
         [TestMethod]
         public void TestTrainBad()
         {
-            using (var bayes = new BFEngine(new ConsolePlatformServices()))
+            using (var bayes = new BfEngine(new ConsolePlatformServices()))
             {
                 bayes.TrainAsBad("q r s t u v w x y z");
                 bayes.TrainAsBad("q r s t u v w x y z");
@@ -37,7 +37,7 @@ namespace BayesFilter.Tests
         [TestMethod]
         public void TestEvaluate()
         {
-            using (var bayes = new BFEngine(new ConsolePlatformServices()))
+            using (var bayes = new BfEngine(new ConsolePlatformServices()))
             {
                 // Train 5 times to reach MinTokenOccurrence.
                 bayes.TrainAsGood($"a b c d e f g h i j k l m n o p");

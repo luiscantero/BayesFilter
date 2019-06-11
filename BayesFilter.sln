@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28803.452
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BayesFilter", "BayesFilter\BayesFilter.csproj", "{1E362CB7-3113-4EBB-9695-319E8170CE6E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BayesFilter.Portable", "BayesFilter.Portable\BayesFilter.Portable.csproj", "{2F49EB7D-3829-44C3-BAE6-242B67D8E52C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BayesFilter.NetStandard", "BayesFilter.NetStandard\BayesFilter.NetStandard.csproj", "{2F49EB7D-3829-44C3-BAE6-242B67D8E52C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BayesFilter.Tests", "BayesFilter.Tests\BayesFilter.Tests.csproj", "{3583F5BE-3670-4FDA-AAB6-F8DC9118100F}"
 EndProject
@@ -44,5 +44,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5F619429-C9ED-46F4-A029-46A94E03FA4E}
 	EndGlobalSection
 EndGlobal

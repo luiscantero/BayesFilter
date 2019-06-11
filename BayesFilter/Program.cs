@@ -9,7 +9,7 @@ namespace BayesFilter
     {
         static void Main(string[] args)
         {
-            using (var bayes = new BFEngine(new ConsolePlatformServices()))
+            using (var bayes = new BfEngine(new ConsolePlatformServices()))
             {
                 // Train 5 times to reach MinTokenOccurrence.
                 bayes.TrainAsGood($"a b c d e f g h i j k l m n o p");
@@ -49,7 +49,7 @@ namespace BayesFilter
             }
         }
 
-        private static void SaveLoadTest(BFEngine bayes)
+        private static void SaveLoadTest(BfEngine bayes)
         {
             Task t = bayes.SaveAsync();
             t.Wait();
@@ -58,7 +58,7 @@ namespace BayesFilter
             t.Wait();
         }
 
-        private static void RunPerfTest(BFEngine bayes, string test)
+        private static void RunPerfTest(BfEngine bayes, string test)
         {
             int length = 10000;
 

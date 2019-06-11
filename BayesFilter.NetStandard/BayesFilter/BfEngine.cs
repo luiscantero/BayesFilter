@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace LC.BayesFilter
 {
-    public class BFEngine : IDisposable
+    public class BfEngine : IDisposable
     {
         private IPlatformServices _platformServices;
 
@@ -44,13 +44,13 @@ namespace LC.BayesFilter
         // Min number of occurrences for a token to be considered when evaluating.
         public int MinTokenOccurrence { get; set; } = 5;
         // Max number of tokens to consider when evaluating a string.
-        public int SignificantTokens { get; set; } = 15;
+        public int SignificantTokens { get; set; } = 15; // n-gram.
         // Allowed charset for tokens, all other (visible) chars are separators.
         public string TokenCharset { get; set; } = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-!$€£¥ÀÁÂÃÄÅÇÈÉÊËÌÍÏÐÑÒÓÔÕÖÙÚÛÜÝßàáâãäåæçèéêëìíîïñòóôõöùúûüýÿ";
         // Prob for unkown token.
         public double UnkownBadProb { get; set; } = 0.5;
 
-        public BFEngine(IPlatformServices platformServices)
+        public BfEngine(IPlatformServices platformServices)
         {
             _platformServices = platformServices;
         }
