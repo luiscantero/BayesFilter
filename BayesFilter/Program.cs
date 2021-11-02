@@ -7,7 +7,7 @@ namespace BayesFilter
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             using (var bayes = new BfEngine(new ConsolePlatformServices()))
             {
@@ -39,23 +39,21 @@ namespace BayesFilter
                 Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
                 Console.WriteLine($"Evaluate \"{test}\": {bayes.GetBadProbability(test):0.00}");
 
-                //SaveLoadTest(bayes);
+                await SaveLoadTestAsync(bayes).ConfigureAwait(false);
 
                 // Perf test.
                 //RunPerfTest(bayes, test);
 
                 Console.WriteLine("Press any key to continue . . .");
-                Console.ReadKey(true);
+                Console.ReadKey();
             }
         }
 
-        private static void SaveLoadTest(BfEngine bayes)
+        private static async Task SaveLoadTestAsync(BfEngine bayes)
         {
-            Task t = bayes.SaveAsync();
-            t.Wait();
+            await bayes.SaveAsync().ConfigureAwait(false);
 
-            t = bayes.LoadAsync();
-            t.Wait();
+            await bayes.LoadAsync().ConfigureAwait(false);
         }
 
         private static void RunPerfTest(BfEngine bayes, string test)

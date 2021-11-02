@@ -12,24 +12,18 @@ namespace BayesFilter
 
         public async Task<T> LoadDictAsync<T>(string name)
         {
-            return await Task<T>.Run(() =>
-            {
-                string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), name + _extension);
-                string json = File.ReadAllText(path);
+            string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), name + _extension);
+            string json = await File.ReadAllTextAsync(path).ConfigureAwait(false);
 
-                return JsonSerializer.Deserialize<T>(json);
-            });
+            return JsonSerializer.Deserialize<T>(json);
         }
 
         public async Task SaveDictAsync<T>(string name, T dict)
         {
-            await Task.Run(() =>
-            {
-                string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), name + _extension);
-                string json = JsonSerializer.Serialize(dict);
+            string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), name + _extension);
+            string json = JsonSerializer.Serialize(dict);
 
-                File.WriteAllText(path, json);
-            });
+            await File.WriteAllTextAsync(path, json).ConfigureAwait(false);
         }
     }
 }
