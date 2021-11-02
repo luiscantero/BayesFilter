@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace LC.BayesFilter
 {
-    public class BfEngine : IDisposable
+    public sealed class BfEngine : IDisposable
     {
         private IPlatformServices _platformServices;
 
