@@ -1,8 +1,7 @@
 ﻿using LC.BayesFilter;
-using Newtonsoft.Json;
-using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace BayesFilter
@@ -18,7 +17,7 @@ namespace BayesFilter
                 string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), name + _extension);
                 string json = File.ReadAllText(path);
 
-                return JsonConvert.DeserializeObject<T>(json);
+                return JsonSerializer.Deserialize<T>(json);
             });
         }
 
@@ -27,7 +26,7 @@ namespace BayesFilter
             await Task.Run(() =>
             {
                 string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), name + _extension);
-                string json = JsonConvert.SerializeObject(dict);
+                string json = JsonSerializer.Serialize(dict);
 
                 File.WriteAllText(path, json);
             });
