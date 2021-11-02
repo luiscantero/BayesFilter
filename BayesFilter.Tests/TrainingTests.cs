@@ -1,10 +1,11 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using LC.BayesFilter;
+using FluentAssertions;
 
 namespace BayesFilter.Tests
 {
     [TestClass]
-    public class UnitTest1
+    public class TrainingTests
     {
         [TestMethod]
         public void TestTrainGood()
@@ -14,9 +15,9 @@ namespace BayesFilter.Tests
                 bayes.TrainAsGood($"a b c d e f g h i j k l m n o p");
                 bayes.TrainAsGood($"a b c d e f g h i j k l m n o p");
 
-                Assert.AreEqual(2, bayes.GoodEventCount);
-                Assert.AreEqual(0, bayes.BadEventCount);
-                Assert.AreEqual(16, bayes.TokenCount);
+                bayes.GoodEventCount.Should().Be(2);
+                bayes.BadEventCount.Should().Be(0);
+                bayes.TokenCount.Should().Be(16);
             }
         }
 
@@ -28,9 +29,9 @@ namespace BayesFilter.Tests
                 bayes.TrainAsBad("q r s t u v w x y z");
                 bayes.TrainAsBad("q r s t u v w x y z");
 
-                Assert.AreEqual(0, bayes.GoodEventCount);
-                Assert.AreEqual(2, bayes.BadEventCount);
-                Assert.AreEqual(10, bayes.TokenCount);
+                bayes.GoodEventCount.Should().Be(0);
+                bayes.BadEventCount.Should().Be(2);
+                bayes.TokenCount.Should().Be(10);
             }
         }
 
@@ -53,44 +54,44 @@ namespace BayesFilter.Tests
                 bayes.TrainAsBad("q r s t u v w x y z");
                 bayes.TrainAsBad("q r s t u v w x y z");
 
-                Assert.AreEqual(bayes.GoodEventCount, 5);
-                Assert.AreEqual(bayes.BadEventCount, 5);
-                Assert.AreEqual(bayes.TokenCount, 26);
+                bayes.GoodEventCount.Should().Be(5);
+                bayes.BadEventCount.Should().Be(5);
+                bayes.TokenCount.Should().Be(26);
 
                 string test;
                 double val;
 
                 test = "a";
-                Assert.AreEqual(0, bayes.GetBadProbability(test));
+                bayes.GetBadProbability(test).Should().Be(0);
 
                 test = "A";
-                Assert.AreEqual(0, bayes.GetBadProbability(test));
+                bayes.GetBadProbability(test).Should().Be(0);
 
                 test = "z";
-                Assert.AreEqual(1, bayes.GetBadProbability(test));
+                bayes.GetBadProbability(test).Should().Be(1);
 
                 test = "a z";
-                Assert.AreEqual(0.5, bayes.GetBadProbability(test));
+                bayes.GetBadProbability(test).Should().Be(0.5);
 
                 test = "A Z";
-                Assert.AreEqual(0.5, bayes.GetBadProbability(test));
+                bayes.GetBadProbability(test).Should().Be(0.5);
 
                 test = "a b z";
                 val = bayes.GetBadProbability(test);
-                Assert.AreEqual(1.0 / 3.0, val, double.Epsilon);
+                val.Should().BeApproximately(1.0 / 3.0, double.Epsilon);
 
                 test = "a y z";
                 val = bayes.GetBadProbability(test);
-                Assert.AreEqual(2.0 / 3.0, val, double.Epsilon);
+                val.Should().BeApproximately(2.0 / 3.0, double.Epsilon);
 
                 bayes.AutoTrain = true; // Only happens if result passes threshold test.
                 test = "a b c d e f g h i j k l m n o p q";
                 val = bayes.GetBadProbability(test);
-                Assert.IsTrue(val > 0.06 && val < 0.07); // 0.06...
+                val.Should().BeInRange(0.06, 0.07); // 0.06...
                 val = bayes.GetBadProbability(test);
-                Assert.IsTrue(val > 0.05 && val < 0.06); // 0.05...
+                val.Should().BeInRange(0.05, 0.06); // 0.05...
                 val = bayes.GetBadProbability(test);
-                Assert.IsTrue(val > 0.04 && val < 0.05); // 0.04...
+                val.Should().BeInRange(0.04, 0.05); // 0.04...
             }
         }
     }
